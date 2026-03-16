@@ -1,0 +1,41 @@
+# ── Core ML / deep learning ───────────────────────────────────────────────────
+# Install PyTorch with CUDA support from https://pytorch.org/get-started/locally/
+# Example (CUDA 11.8):
+#   pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118
+torch>=2.0.0
+
+# PyTorch Geometric — required by models.py and utils.py
+#   (torch_geometric.data.Data, torch_geometric.utils.k_hop_subgraph)
+#   pip install torch-geometric
+torch-geometric>=2.4.0
+
+# torch-scatter — required by utils.py (scatter_add)
+# Must match your torch + CUDA version:
+#   pip install torch-scatter -f https://data.pyg.org/whl/torch-${TORCH_VERSION}+${CUDA}.html
+# Example (torch 2.0 + CUDA 11.8):
+#   pip install torch-scatter -f https://data.pyg.org/whl/torch-2.0.0+cu118.html
+torch-scatter
+
+# ── Numerical / data ──────────────────────────────────────────────────────────
+numpy>=1.19.0
+scipy==1.9.3
+pandas
+
+# ── Progress / logging ────────────────────────────────────────────────────────
+tqdm>=4.50.0
+
+# ── Visualisation ─────────────────────────────────────────────────────────────
+matplotlib
+
+# ── NLP / embeddings (used by baselines) ─────────────────────────────────────
+gensim==4.1.2
+
+# ── Config handling ───────────────────────────────────────────────────────────
+PyYAML>=6.0
+
+# ── Baselines / unKR framework ────────────────────────────────────────────────
+pytorch-lightning==1.5.10  # required by unKR baselines (FocusE, PASSLEAF, UPGAT)
+wandb==0.12.7
+
+# ── Interactive / notebooks ───────────────────────────────────────────────────
+IPython
