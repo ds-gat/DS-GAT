@@ -1,0 +1,54 @@
+# DS-GAT — Main model: DSGAT2 on cn15k
+# Scoring function: ComplEx
+# Conv: EGATConv28 — full Bayesian eff_w, dual-stream aggregation
+# Loss: FocusE-exact outer weighting
+#   nll_per_pos = -log(exp(s_pos) / (exp(s_pos) + sum exp(s_neg)))
+#   loss = mean(conf_pos x nll_per_pos)
+#
+# Equivalent CLI:
+#   python models.py \
+#     --gpu 0 --dataset cn15k --modelname DSGAT2 --weighted \
+#     --test-graph-size -1 --edge-weight-mode bayesian \
+#     --negative-sample 50 --embedding_dim 400 --score complex \
+#     --graph-batch-size -1 --lr 0.001 --lr-patience 100 \
+#     --lr-decay-factor 0.5 --min-lr 1e-5 \
+#     --early-stop-patience 20 --early-stop-delta 0.001 \
+#     --n-epochs 3000 --evaluate-every 300 \
+#     --numhops 2 --dropout 0.2 --nll-lambda 0.2
+
+# ── Model ─────────────────────────────────────────────────────────────────────
+modelname: DSGAT2
+score: complex                  # choices: dismult | complex | rotate | transe | hybrid
+embedding_dim: 400
+numhops: 2
+dropout: 0.2
+edge_weight_mode: bayesian      # choices: normalize | concat | none | learnable | bayesian
+nll_lambda: 0.2
+
+# ── Dataset ───────────────────────────────────────────────────────────────────
+dataset: cn15k
+weighted: true
+no_directed: false
+
+# ── Training ──────────────────────────────────────────────────────────────────
+n_epochs: 3000
+evaluate_every: 300
+graph_batch_size: -1            # -1 = use all training triplets per step
+negative_sample: 50
+test_graph_size: -1             # -1 = use all train triplets for val/test graph
+regularization: 0.01
+grad_norm: 1.0
+seed: 42
+
+# ── Optimizer (Adam + ReduceLROnPlateau) ──────────────────────────────────────
+lr: 0.001
+lr_decay_factor: 0.5
+lr_patience: 100
+min_lr: 1.0e-5
+
+# ── Early stopping ────────────────────────────────────────────────────────────
+early_stop_patience: 20         # eval intervals with no MRR improvement
+early_stop_delta: 0.001
+
+# ── Hardware ──────────────────────────────────────────────────────────────────
+gpu: 0                          # -1 for CPU

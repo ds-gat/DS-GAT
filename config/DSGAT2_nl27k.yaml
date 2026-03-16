@@ -1,0 +1,50 @@
+# DS-GAT — Main model: DSGAT2 on nl27k
+# Scoring function: ComplEx
+#
+# Equivalent CLI:
+#   python models.py \
+#     --gpu 0 --dataset nl27k --modelname DSGAT2 --weighted \
+#     --test-graph-size -1 --edge-weight-mode bayesian \
+#     --negative-sample 50 --embedding_dim 500 --score complex \
+#     --graph-batch-size -1 --lr 0.001 --lr-patience 100 \
+#     --lr-decay-factor 0.5 --min-lr 1e-5 \
+#     --early-stop-patience 20 --early-stop-delta 0.001 \
+#     --n-epochs 3000 --evaluate-every 300 \
+#     --numhops 2 --dropout 0.35 --nll-lambda 0.2
+
+# ── Model ─────────────────────────────────────────────────────────────────────
+modelname: DSGAT2
+score: complex
+embedding_dim: 500              # larger embedding for nl27k (~27k entities)
+numhops: 2
+dropout: 0.35                   # higher dropout for nl27k
+edge_weight_mode: bayesian
+nll_lambda: 0.2
+
+# ── Dataset ───────────────────────────────────────────────────────────────────
+dataset: nl27k
+weighted: true
+no_directed: false
+
+# ── Training ──────────────────────────────────────────────────────────────────
+n_epochs: 3000
+evaluate_every: 300
+graph_batch_size: -1
+negative_sample: 50
+test_graph_size: -1
+regularization: 0.01
+grad_norm: 1.0
+seed: 42
+
+# ── Optimizer ─────────────────────────────────────────────────────────────────
+lr: 0.001
+lr_decay_factor: 0.5
+lr_patience: 100
+min_lr: 1.0e-5
+
+# ── Early stopping ────────────────────────────────────────────────────────────
+early_stop_patience: 20
+early_stop_delta: 0.001
+
+# ── Hardware ──────────────────────────────────────────────────────────────────
+gpu: 0
