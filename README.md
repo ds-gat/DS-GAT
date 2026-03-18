@@ -9,9 +9,10 @@ DS-GAT is a dual-stream graph attention network for uncertain knowledge graph em
 
 All experiments are run on three uncertain knowledge graph datasets: **CN15k**, **NL27k**, and **PPI5k**.
 
-Hyperparameters for every model and dataset are stored in YAML config files under `config/`:
+Hyperparameters for every model and dataset are stored in YAML config files:
 - `config/` — DS-GAT main model (DSGAT2) and ablations (DSGATA1, DSGATA2)
 - `config/GAT/` — GAT baseline models (EGAT, WSGAT, GATV2)
+- `baselinesUNKR/config/` — unKGE baseline models (PASSLEAF, UPGAT), organized by dataset
 
 ---
 
