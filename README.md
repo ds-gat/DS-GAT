@@ -54,12 +54,6 @@ Any config value can be overridden on the command line — CLI arguments always 
 python models.py --config config/DSGAT2_cn15k.yaml --gpu 1 --dropout 0.3
 ```
 
-### Ablation models (DSGATA1, DSGATA2)
-
-```bash
-python models.py --config config/ablation/DSGATA1_cn15k.yaml
-python models.py --config config/ablation/DSGATA2_nl27k.yaml
-```
 
 ### GAT baseline models (EGAT, WSGAT, GATV2)
 
