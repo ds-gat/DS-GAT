@@ -4,7 +4,7 @@
 
 DS-GAT is a dual-stream graph attention network for uncertain knowledge graph embedding. It is evaluated against two groups of baselines:
 
-- **unKR baselines** (BEUrRE, GTransE, PASSLEAF, UKGElogi, UKGErect, UKGsE, UPGAT, GMUC): published results from the [unKR benchmark](https://ipcm-lab.github.io/unKR/), covering confidence prediction and link prediction on CN15k, NL27k, and PPI5k.
+- **unKR baselines** (BEUrRE, GTransE, PASSLEAF, UKGElogi, UKGErect, UKGsE, UPGAT, GMUC): published results from the [unKR benchmark](https://github.com/seucoin/unKR/), covering confidence prediction and link prediction on CN15k, NL27k, and PPI5k.
 - **GAT baselines** (EGAT, WSGAT, GATv2): re-implemented graph attention models trained under the same conditions as DS-GAT, providing a direct comparison on identical data splits and evaluation protocol.
 
 All experiments are run on three uncertain knowledge graph datasets: **CN15k**, **NL27k**, and **PPI5k**.
