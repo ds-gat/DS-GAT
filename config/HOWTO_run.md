@@ -1,11 +1,11 @@
 # How to run DS-GAT experiments
 
-`models.py` uses argparse — configs in this folder are reference documentation.
-Copy the CLI command from the YAML header and adapt as needed.
+All experiments are launched through `models.py`. The recommended way is to pass a YAML config
+file with `--config`; every value in the file becomes a default that any CLI argument can override.
 
 ---
 
-## Environment setup
+## 1. Environment setup
 
 ```bash
 conda activate torchgpu
@@ -30,105 +30,75 @@ pip install -r requirements.txt
 
 ---
 
-## Main model — DSGAT2
-
-### cn15k
+## 2. Running with a config file (recommended)
 
 ```bash
-python models.py \
-  --gpu 0 --dataset cn15k --modelname DSGAT2 --weighted \
-  --test-graph-size -1 --edge-weight-mode bayesian \
-  --negative-sample 50 --embedding_dim 400 --score complex \
-  --graph-batch-size -1 --lr 0.001 --lr-patience 100 \
-  --lr-decay-factor 0.5 --min-lr 1e-5 \
-  --early-stop-patience 20 --early-stop-delta 0.001 \
-  --n-epochs 3000 --evaluate-every 300 \
-  --numhops 2 --dropout 0.2 --nll-lambda 0.2
+python models.py --config <path/to/config.yaml>
 ```
 
-### nl27k
+Any value in the YAML can be overridden on the command line:
 
 ```bash
-python models.py \
-  --gpu 0 --dataset nl27k --modelname DSGAT2 --weighted \
-  --test-graph-size -1 --edge-weight-mode bayesian \
-  --negative-sample 50 --embedding_dim 500 --score complex \
-  --graph-batch-size -1 --lr 0.001 --lr-patience 100 \
-  --lr-decay-factor 0.5 --min-lr 1e-5 \
-  --early-stop-patience 20 --early-stop-delta 0.001 \
-  --n-epochs 3000 --evaluate-every 300 \
-  --numhops 2 --dropout 0.35 --nll-lambda 0.2
+# Run cn15k config on GPU 1 with a different dropout
+python models.py --config config/DSGAT2_cn15k.yaml --gpu 1 --dropout 0.3
 ```
 
-### ppi5k
+### Main model — DSGAT2
+
+Config files are in `config/`:
 
 ```bash
-python models.py \
-  --gpu 0 --dataset ppi5k --modelname DSGAT2 --weighted \
-  --test-graph-size -1 --edge-weight-mode bayesian \
-  --negative-sample 50 --embedding_dim 400 --score complex \
-  --graph-batch-size -1 --lr 0.001 --lr-patience 100 \
-  --lr-decay-factor 0.5 --min-lr 1e-5 \
-  --early-stop-patience 20 --early-stop-delta 0.001 \
-  --n-epochs 3000 --evaluate-every 300 \
-  --dropout 0.4 --nll-lambda 0.2
+python models.py --config config/DSGAT2_cn15k.yaml
+python models.py --config config/DSGAT2_nl27k.yaml
+python models.py --config config/DSGAT2_ppi5k.yaml
+```
+
+### Ablation models — DSGATA1 / DSGATA2
+
+Config files are in `config/ablation/`:
+
+```bash
+python models.py --config config/ablation/DSGATA1_cn15k.yaml
+python models.py --config config/ablation/DSGATA1_nl27k.yaml
+python models.py --config config/ablation/DSGATA1_ppi5k.yaml
+
+python models.py --config config/ablation/DSGATA2_cn15k.yaml
+python models.py --config config/ablation/DSGATA2_nl27k.yaml
+python models.py --config config/ablation/DSGATA2_ppi5k.yaml
+```
+
+### GAT baseline models — EGAT / WSGAT / GATV2
+
+Config files are in `config/GAT/`:
+
+```bash
+python models.py --config config/GAT/EGAT_cn15k.yaml
+python models.py --config config/GAT/EGAT_nl27k.yaml
+python models.py --config config/GAT/EGAT_ppi5k.yaml
+
+python models.py --config config/GAT/WSGAT_cn15k.yaml
+python models.py --config config/GAT/WSGAT_nl27k.yaml
+python models.py --config config/GAT/WSGAT_ppi5k.yaml
+
+python models.py --config config/GAT/GATV2_cn15k.yaml
+python models.py --config config/GAT/GATV2_nl27k.yaml
+python models.py --config config/GAT/GATV2_ppi5k.yaml
 ```
 
 ---
 
-## Ablation models — DSGATA1 / DSGATA2
+## 3. SLURM (cluster)
 
-Replace `--modelname DSGATA1` with `DSGATA2` for the other ablation.
-
-### cn15k
-
-```bash
-python models.py \
-  --gpu 0 --dataset cn15k --modelname DSGATA1 --weighted \
-  --test-graph-size -1 --edge-weight-mode bayesian \
-  --negative-sample 50 --embedding_dim 400 --score complex \
-  --graph-batch-size -1 --lr 0.001 --lr-patience 100 \
-  --lr-decay-factor 0.5 --min-lr 1e-5 \
-  --early-stop-patience 20 --early-stop-delta 0.001 \
-  --n-epochs 3000 --evaluate-every 300 \
-  --numhops 2 --dropout 0.2 --nll-lambda 0.2
-```
-
-### nl27k
+Each sbatch script runs EGAT, WSGAT, and GATV2 sequentially for one dataset,
+loading hyperparameters from `config/GAT/`:
 
 ```bash
-python models.py \
-  --gpu 0 --dataset nl27k --modelname DSGATA1 --weighted \
-  --test-graph-size -1 --edge-weight-mode bayesian \
-  --negative-sample 50 --embedding_dim 500 --score complex \
-  --graph-batch-size -1 --lr 0.001 --lr-patience 100 \
-  --lr-decay-factor 0.5 --min-lr 1e-5 \
-  --early-stop-patience 20 --early-stop-delta 0.001 \
-  --n-epochs 3000 --evaluate-every 300 \
-  --numhops 2 --dropout 0.35 --nll-lambda 0.2
+sbatch run_cn15k_baselines.sh
+sbatch run_nl27k_baselines.sh
+sbatch run_ppi5k_baselines.sh
 ```
 
-### ppi5k
-
-```bash
-python models.py \
-  --gpu 0 --dataset ppi5k --modelname DSGATA1 --weighted \
-  --test-graph-size -1 --edge-weight-mode bayesian \
-  --negative-sample 50 --embedding_dim 400 --score complex \
-  --graph-batch-size -1 --lr 0.001 --lr-patience 100 \
-  --lr-decay-factor 0.5 --min-lr 1e-5 \
-  --early-stop-patience 20 --early-stop-delta 0.001 \
-  --n-epochs 3000 --evaluate-every 300 \
-  --numhops 2 --dropout 0.4 --nll-lambda 0.2
-```
-
-### DistMult instead of ComplEx
-
-Add `--score dismult` to any command above.
-
----
-
-## SLURM (cluster)
+Main model jobs:
 
 ```bash
 sbatch run_dsgat_cn15kc.sh
@@ -138,34 +108,41 @@ sbatch run_dsgat_ppi5kc.sh
 
 ---
 
-## Output
+## 4. Output
 
-Saved to `output/` (created automatically):
+All outputs are saved to `output/` (created automatically):
 
 | File | Contents |
 |---|---|
-| `output/{model}_{score}_{dataset}t_best_mrr_model.pth` | Best checkpoint |
+| `output/{model}_{score}_{dataset}t_best_mrr_model.pth` | Best checkpoint (highest validation MRR) |
 | `output/metrics_{model}_{score}_{dataset}_{timestamp}.csv` | Test metrics (MRR, Hits@K, wMRR) |
-| `output/training_curves_{model}_{score}_{dataset}_{timestamp}.csv` | Training log |
+| `output/training_curves_{model}_{score}_{dataset}_{timestamp}.csv` | Training log (loss, val MRR, time per epoch) |
 
 ---
 
-## Parameter reference
+## 5. Parameter reference
 
-| Argument | Default | Used in DS-GAT |
+| Argument | Default | DS-GAT value |
 |---|---|---|
-| `--modelname` | `RGCN` | `DSGAT2`, `DSGATA1`, `DSGATA2` |
-| `--score` | `dismult` | `complex` (all DS-GAT runs) |
+| `--config` | `None` | path to YAML file |
+| `--modelname` | `RGCN` | `DSGAT2`, `DSGATA1`, `DSGATA2`, `EGAT`, `WSGAT`, `GATV2` |
+| `--score` | `dismult` | `complex` (DS-GAT) / `dismult` (GAT baselines) |
 | `--embedding_dim` | `100` | 400 (cn15k, ppi5k) / 500 (nl27k) |
 | `--numhops` | `2` | 2 |
-| `--dropout` | `0.2` | 0.2 (cn15k) / 0.35 (nl27k) / 0.4 (ppi5k) |
-| `--nll-lambda` | `0.1` | 0.2 |
+| `--dropout` | `0.2` | 0.2 (cn15k DSGAT2) / 0.35 (nl27k, baselines) / 0.4 (ppi5k DSGAT2) |
+| `--nll-lambda` | `0.1` | 0.2 (DS-GAT only) |
 | `--edge-weight-mode` | `bayesian` | `bayesian` |
+| `--weighted` | `false` | always `true` |
 | `--negative-sample` | `1` | 50 |
 | `--graph-batch-size` | `30000` | -1 (all triplets) |
 | `--test-graph-size` | `-1` | -1 (all train triplets) |
-| `--weighted` | `false` | always set |
 | `--early-stop-patience` | `20` | 20 eval intervals |
+| `--early-stop-delta` | `0.001` | 0.001 |
 | `--evaluate-every` | `500` | 300 |
+| `--lr` | `0.001` | 0.001 |
 | `--lr-patience` | `500` | 100 |
+| `--lr-decay-factor` | `0.5` | 0.5 |
+| `--min-lr` | `1e-5` | 1e-5 |
+| `--grad-norm` | `1.0` | 1.0 |
+| `--seed` | `42` | 42 |
 | `--gpu` | `-1` | 0 |

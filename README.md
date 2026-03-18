@@ -1,5 +1,20 @@
 # DS-GAT
 
+![DS-GAT Architecture](images/DS-GAT.png)
+
+DS-GAT is a dual-stream graph attention network for uncertain knowledge graph embedding. It is evaluated against two groups of baselines:
+
+- **unKR baselines** (BEUrRE, GTransE, PASSLEAF, UKGElogi, UKGErect, UKGsE, UPGAT, GMUC): published results from the [unKR benchmark](https://ipcm-lab.github.io/unKR/), covering confidence prediction and link prediction on CN15k, NL27k, and PPI5k.
+- **GAT baselines** (EGAT, WSGAT, GATv2): re-implemented graph attention models trained under the same conditions as DS-GAT, providing a direct comparison on identical data splits and evaluation protocol.
+
+All experiments are run on three uncertain knowledge graph datasets: **CN15k**, **NL27k**, and **PPI5k**.
+
+Hyperparameters for every model and dataset are stored in YAML config files under `config/`:
+- `config/` — DS-GAT main model (DSGAT2) and ablations (DSGATA1, DSGATA2)
+- `config/GAT/` — GAT baseline models (EGAT, WSGAT, GATV2)
+
+---
+
 ## Setup
 
 ```bash
@@ -21,98 +36,82 @@ pip install -r requirements.txt
 
 ## Running DS-GAT
 
-All experiments use `models.py` with argparse. Configs in `config/` document the exact hyperparameters used.
+The recommended way to run experiments is via a YAML config file. All configs are in `config/`.
 
 ### Main model (DSGAT2)
 
-**cn15k**
 ```bash
-python models.py \
-  --gpu 0 --dataset cn15k --modelname DSGAT2 --weighted \
-  --test-graph-size -1 --edge-weight-mode bayesian \
-  --negative-sample 50 --embedding_dim 400 --score complex \
-  --graph-batch-size -1 --lr 0.001 --lr-patience 100 \
-  --lr-decay-factor 0.5 --min-lr 1e-5 \
-  --early-stop-patience 20 --early-stop-delta 0.001 \
-  --n-epochs 3000 --evaluate-every 300 \
-  --numhops 2 --dropout 0.2 --nll-lambda 0.2
+python models.py --config config/DSGAT2_cn15k.yaml
+python models.py --config config/DSGAT2_nl27k.yaml
+python models.py --config config/DSGAT2_ppi5k.yaml
 ```
 
-**nl27k**
-```bash
-python models.py \
-  --gpu 0 --dataset nl27k --modelname DSGAT2 --weighted \
-  --test-graph-size -1 --edge-weight-mode bayesian \
-  --negative-sample 50 --embedding_dim 500 --score complex \
-  --graph-batch-size -1 --lr 0.001 --lr-patience 100 \
-  --lr-decay-factor 0.5 --min-lr 1e-5 \
-  --early-stop-patience 20 --early-stop-delta 0.001 \
-  --n-epochs 3000 --evaluate-every 300 \
-  --numhops 2 --dropout 0.35 --nll-lambda 0.2
-```
+Any config value can be overridden on the command line — CLI arguments always take precedence over the YAML file:
 
-**ppi5k**
 ```bash
-python models.py \
-  --gpu 0 --dataset ppi5k --modelname DSGAT2 --weighted \
-  --test-graph-size -1 --edge-weight-mode bayesian \
-  --negative-sample 50 --embedding_dim 400 --score complex \
-  --graph-batch-size -1 --lr 0.001 --lr-patience 100 \
-  --lr-decay-factor 0.5 --min-lr 1e-5 \
-  --early-stop-patience 20 --early-stop-delta 0.001 \
-  --n-epochs 3000 --evaluate-every 300 \
-  --dropout 0.4 --nll-lambda 0.2
+# Use the cn15k config but run on GPU 1 and change dropout
+python models.py --config config/DSGAT2_cn15k.yaml --gpu 1 --dropout 0.3
 ```
 
 ### Ablation models (DSGATA1, DSGATA2)
 
-Replace `--modelname DSGATA1` with `DSGATA2` for the second ablation.
-
-**cn15k**
 ```bash
-python models.py \
-  --gpu 0 --dataset cn15k --modelname DSGATA1 --weighted \
-  --test-graph-size -1 --edge-weight-mode bayesian \
-  --negative-sample 50 --embedding_dim 400 --score complex \
-  --graph-batch-size -1 --lr 0.001 --lr-patience 100 \
-  --lr-decay-factor 0.5 --min-lr 1e-5 \
-  --early-stop-patience 20 --early-stop-delta 0.001 \
-  --n-epochs 3000 --evaluate-every 300 \
-  --numhops 2 --dropout 0.2 --nll-lambda 0.2
+python models.py --config config/ablation/DSGATA1_cn15k.yaml
+python models.py --config config/ablation/DSGATA2_nl27k.yaml
 ```
 
-**nl27k**
+### GAT baseline models (EGAT, WSGAT, GATV2)
+
+Config files are in `config/GAT/`:
+
 ```bash
-python models.py \
-  --gpu 0 --dataset nl27k --modelname DSGATA1 --weighted \
-  --test-graph-size -1 --edge-weight-mode bayesian \
-  --negative-sample 50 --embedding_dim 500 --score complex \
-  --graph-batch-size -1 --lr 0.001 --lr-patience 100 \
-  --lr-decay-factor 0.5 --min-lr 1e-5 \
-  --early-stop-patience 20 --early-stop-delta 0.001 \
-  --n-epochs 3000 --evaluate-every 300 \
-  --numhops 2 --dropout 0.35 --nll-lambda 0.2
+# Single model
+python models.py --config config/GAT/EGAT_cn15k.yaml
+python models.py --config config/GAT/WSGAT_nl27k.yaml
+python models.py --config config/GAT/GATV2_ppi5k.yaml
+
 ```
 
-**ppi5k**
-```bash
-python models.py \
-  --gpu 0 --dataset ppi5k --modelname DSGATA1 --weighted \
-  --test-graph-size -1 --edge-weight-mode bayesian \
-  --negative-sample 50 --embedding_dim 400 --score complex \
-  --graph-batch-size -1 --lr 0.001 --lr-patience 100 \
-  --lr-decay-factor 0.5 --min-lr 1e-5 \
-  --early-stop-patience 20 --early-stop-delta 0.001 \
-  --n-epochs 3000 --evaluate-every 300 \
-  --numhops 2 --dropout 0.4 --nll-lambda 0.2
+---
+
+## Config files
+
 ```
+config/
+├── DSGAT2_cn15k.yaml          # Main model — CN15k
+├── DSGAT2_nl27k.yaml          # Main model — NL27k
+├── DSGAT2_ppi5k.yaml          # Main model — PPI5k
+├── ablation/
+│   ├── DSGATA1_cn15k.yaml     # Ablation A1 (attention-only)
+│   ├── DSGATA1_nl27k.yaml
+│   ├── DSGATA1_ppi5k.yaml
+│   ├── DSGATA2_cn15k.yaml     # Ablation A2 (no Bayesian)
+│   ├── DSGATA2_nl27k.yaml
+│   └── DSGATA2_ppi5k.yaml
+└── GAT/
+    ├── EGAT_cn15k.yaml        # GAT baselines
+    ├── EGAT_nl27k.yaml
+    ├── EGAT_ppi5k.yaml
+    ├── WSGAT_cn15k.yaml
+    ├── WSGAT_nl27k.yaml
+    ├── WSGAT_ppi5k.yaml
+    ├── GATV2_cn15k.yaml
+    ├── GATV2_nl27k.yaml
+    └── GATV2_ppi5k.yaml
 
-### On a SLURM cluster
-
-```bash
-sbatch run_dsgat_cn15kc.sh
-sbatch run_dsgat_nl27kc.sh
-sbatch run_dsgat_ppi5kc.sh
+baselinesUNKR/config/          # unKGE baselines (PASSLEAF, UPGAT)
+├── cn15k/
+│   ├── PASSLEAF_cn15k.yaml
+│   ├── PASSLEAF_cn15kc.yaml   # ComplEx scoring variant
+│   └── UPGAT_cn15k.yaml
+├── nl27k/
+│   ├── PASSLEAF_nl27k.yaml
+│   ├── PASSLEAF_nl27kc.yaml
+│   └── UPGAT_nl27k.yaml
+└── ppi5k/
+    ├── PASSLEAF_ppi5k.yaml
+    ├── PASSLEAF_ppi5kc.yaml
+    └── UPGAT_ppi5k.yaml
 ```
 
 ---

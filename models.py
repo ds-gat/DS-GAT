@@ -1,5 +1,6 @@
 import argparse
 import csv
+import yaml
 import numpy as np
 import torch
 import torch.nn as nn
@@ -394,6 +395,7 @@ def main(args):
     # Initialize your RGCN
     model_name=args.modelname
     file_tag = f"{model_name}_{args.score}_{args.dataset}"
+    model = None
     if(model_name=="RGCN"):
         model = RGCN(
             num_entities=node_features_shape[0],
@@ -501,6 +503,11 @@ def main(args):
         model.nll_lambda = args.nll_lambda
     
 
+    if model is None:
+        raise ValueError(f"Unknown modelname '{model_name}'. "
+                         f"Choices: RGCN, GATV2, RGCNW, EGAT, WSGAT, RGAT, GATV2W, EGATR, "
+                         f"DSGAT2, DSGATA1, DSGATA2")
+
     print(f"train_conf is None: {train_conf is None}")
     if train_conf is not None:
         print(f"Confidence stats: min={train_conf.min()}, max={train_conf.max()}, mean={train_conf.mean()}")
@@ -580,7 +587,7 @@ def main(args):
 
         scaler.scale(loss).backward()
         scaler.unscale_(optimizer)                              # necesario antes del clip
-        torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+        torch.nn.utils.clip_grad_norm_(model.parameters(), args.grad_norm)
         scaler.step(optimizer)
         scaler.update()
         epoch_train_time = time.time() - t0
@@ -597,7 +604,8 @@ def main(args):
                 torch.cuda.empty_cache()
 
             model.eval()
-            torch.cuda.empty_cache()
+            if use_cuda:
+                torch.cuda.empty_cache()
             valid_mrr = valid(valid_triplets, model, test_graph, all_triplets, use_cuda, weighted=weigthed)
             val_mrr_log = valid_mrr
 
@@ -642,10 +650,14 @@ def main(args):
         writer.writerows(training_log)
     print(f"Training curves saved to: {curves_path}")
 
+    checkpoint_path = f"./output/{file_tag}t_best_mrr_model.pth"
+    if not os.path.exists(checkpoint_path):
+        print("Warning: no checkpoint saved (model never improved on validation). "
+              "Evaluating with final model weights.")
+    else:
+        checkpoint = torch.load(checkpoint_path)
+        model.load_state_dict(checkpoint['state_dict'])
     model.eval()
-    checkpoint = torch.load(f"./output/{file_tag}t_best_mrr_model.pth")
-
-    model.load_state_dict(checkpoint['state_dict'])
 
     if use_cuda:
         model.cuda()
@@ -660,6 +672,10 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Execution Models')
+
+    parser.add_argument("--config", type=str, default=None,
+                        help="Path to a YAML config file. Values are used as defaults "
+                             "and can be overridden by any CLI argument.")
 
     parser.add_argument("--graph-batch-size", type=int, default=30000)
     parser.add_argument("--graph-split-size", type=float, default=0.5)
@@ -720,6 +736,18 @@ if __name__ == '__main__':
     
 
     
+    # Pre-parse to get --config, then inject YAML values as defaults before full parse.
+    # CLI arguments always win over YAML values.
+    _pre, _ = parser.parse_known_args()
+    if _pre.config is not None:
+        with open(_pre.config) as _f:
+            _cfg = yaml.safe_load(_f)
+        if _cfg:
+            # Drop keys that are comments-only (None) or not defined in the parser
+            _valid_dests = {a.dest for a in parser._actions}
+            _cfg = {k: v for k, v in _cfg.items() if v is not None and k in _valid_dests}
+            parser.set_defaults(**_cfg)
+
     args = parser.parse_args()
 
 
