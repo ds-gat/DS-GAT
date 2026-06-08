@@ -1,8 +1,0 @@
-model,ppi5k_mean_h,ppi5k_std_h,ppi5k_n,cn15k_mean_h,cn15k_std_h,cn15k_n,nl27k_mean_h,nl27k_std_h,nl27k_n
-DS-GAT (ours),,,0,,,0,,,0
-EGAT,,,0,,,0,,,0
-WSGAT,,,0,,,0,,,0
-GATv2,,,0,,,0,,,0
-PASSLEAF,,,0,,,0,,,0
-UPGAT,,,0,,,0,,,0
-BEUrRE,8.8628,,1,10.5237,,1,12.9644,,1
