@@ -342,6 +342,23 @@ def test(test_triplets, model, test_graph, all_triplets, use_cuda,
     return mrr
 
 
+def save_timing_csv(model_name, total_time_s, status="completed", output_dir="output"):
+    os.makedirs(output_dir, exist_ok=True)
+    now      = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filepath = os.path.join(output_dir, f"timing_{model_name}_{now}.csv")
+    with open(filepath, "w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=[
+            "model", "total_train_time_s", "total_train_time_h", "status"])
+        writer.writeheader()
+        writer.writerow({
+            "model":              model_name,
+            "total_train_time_s": round(total_time_s, 2),
+            "total_train_time_h": round(total_time_s / 3600, 4),
+            "status":             status,
+        })
+    print(f"Timing saved to: {filepath}")
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Node embedding loader
 # ─────────────────────────────────────────────────────────────────────────────
@@ -394,7 +411,7 @@ def main(args):
 
     # Initialize your RGCN
     model_name=args.modelname
-    file_tag = f"{model_name}_{args.score}_{args.dataset}"
+    file_tag = f"{model_name}_{args.score}_{args.dataset}_s{args.seed}"
     model = None
     if(model_name=="RGCN"):
         model = RGCN(
@@ -413,7 +430,8 @@ def main(args):
             dropout=args.dropout,
             node_features=node_features,
             embedding_dim=args.embedding_dim,
-            num_layers=args.numhops
+            num_layers=args.numhops,
+            score_function=args.score
         )
 
     if(model_name=="RGCNW"):
@@ -433,7 +451,8 @@ def main(args):
             num_relations=num_relations_model,
             embedding_dim=args.embedding_dim,
             dropout=args.dropout,
-            num_layers=args.numhops
+            num_layers=args.numhops,
+            score_function=args.score
         )
     if(model_name=="WSGAT"):
         model = WSGATWrapper(
@@ -441,7 +460,8 @@ def main(args):
             embedding_dim=args.embedding_dim,
             num_relations=num_relations_model,
             dropout=args.dropout,
-            num_layers=args.numhops
+            num_layers=args.numhops,
+            score_function=args.score
         )
     if(model_name=="RGAT"):
         model = RGAT(
@@ -555,6 +575,7 @@ def main(args):
 
     training_log = []
     train_start_total = time.time()
+    _timing_status = "interrupted"
     es_counter = 0   # early-stopping: eval intervals with no MRR improvement > min_delta
 
     # AMP: mixed precision activo solo en GPU (en CPU es no-op)
@@ -641,6 +662,8 @@ def main(args):
 
     total_train_time = time.time() - train_start_total
     print(f"Total training time: {total_train_time:.1f}s ({total_train_time/3600:.2f}h)")
+    _timing_status = "completed"
+    save_timing_csv(file_tag, total_train_time, status=_timing_status)
 
     os.makedirs("./output", exist_ok=True)
     curves_path = f"./output/training_curves_{file_tag}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"

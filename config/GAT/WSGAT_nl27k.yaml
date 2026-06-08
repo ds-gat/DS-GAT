@@ -14,7 +14,7 @@
 
 # ── Model ─────────────────────────────────────────────────────────────────────
 modelname: WSGAT
-score: dismult
+score: complex
 embedding_dim: 500              # larger embedding for nl27k (~27k entities)
 numhops: 2
 dropout: 0.35

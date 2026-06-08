@@ -20,15 +20,19 @@ class GATv2Rel(nn.Module):
                  embedding_dim=300,
                  num_layers=2,
                  heads=4,
-            weights=False):
+                 weights=False,
+                 score_function="dismult"):
 
         super().__init__()
 
+        if score_function == "complex":
+            embedding_dim = embedding_dim * 2
+        self.score_function = score_function
         self.embedding_dim = embedding_dim
         self.dropout_ratio = dropout
         self.num_layers = num_layers
         self.heads = heads
-        self.weights= weights
+        self.weights = weights
 
         # Node embeddings
         self.entity_embedding = nn.Embedding.from_pretrained(
@@ -94,23 +98,44 @@ class GATv2Rel(nn.Module):
         return x
 
     # ------------------------------------------------
-    # DistMult scoring
+    # Scoring
     # ------------------------------------------------
-    def distmult(self, embedding, triplets):
+    def _distmult_direct(self, h, r, t):
+        return torch.sum(h * r * t, dim=-1)
 
+    def _complex_direct(self, h, r, t):
+        re_h, im_h = torch.chunk(h, 2, dim=-1)
+        re_r, im_r = torch.chunk(r, 2, dim=-1)
+        re_t, im_t = torch.chunk(t, 2, dim=-1)
+        return torch.sum(
+            re_h * re_t * re_r + im_h * im_t * re_r
+            + re_h * im_t * im_r - im_h * re_t * im_r, dim=-1)
+
+    def distmult(self, embedding, triplets):
         s = embedding[triplets[:, 0]]
         r = self.relation_embedding[triplets[:, 1]]
         o = embedding[triplets[:, 2]]
-
-        score = torch.sum(s * r * o, dim=1)
-        return score
+        return self._distmult_direct(s, r, o)
 
     def score_loss(self, embedding, triplets, target):
-
-        score = self.distmult(embedding, triplets)
+        s = embedding[triplets[:, 0]]
+        r = self.relation_embedding[triplets[:, 1]]
+        o = embedding[triplets[:, 2]]
+        if self.score_function == "complex":
+            score = self._complex_direct(s, r, o)
+        else:
+            score = self._distmult_direct(s, r, o)
         return F.binary_cross_entropy_with_logits(score, target)
 
-    def reg_loss(self, embedding):
+    def _score_for_eval(self, h_emb, r_idx, t_embs):
+        n   = t_embs.shape[0]
+        r   = self.relation_embedding[r_idx]
+        h   = h_emb.unsqueeze(0).expand(n, -1)
+        r_b = r.unsqueeze(0).expand(n, -1)
+        if self.score_function == "complex":
+            return self._complex_direct(h, r_b, t_embs)
+        return self._distmult_direct(h, r_b, t_embs)
 
+    def reg_loss(self, embedding):
         return torch.mean(embedding.pow(2)) + \
                torch.mean(self.relation_embedding.pow(2))

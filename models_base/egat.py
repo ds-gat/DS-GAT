@@ -9,14 +9,18 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import dgl
+from torch.utils.checkpoint import checkpoint as grad_checkpoint
 from utils import uniform
 
 
 class EGATWrapper(nn.Module):
-    def __init__(self, node_features,num_relations, embedding_dim, dropout, num_layers=2, num_heads=4,
-             use_bayesian=True
+    def __init__(self, node_features, num_relations, embedding_dim, dropout, num_layers=2, num_heads=4,
+             use_bayesian=True, score_function="dismult"
 ):
         super().__init__()
+        if score_function == "complex":
+            embedding_dim = embedding_dim * 2
+        self.score_function = score_function
         self.embedding_dim = embedding_dim
         self.num_layers = num_layers
         self.num_heads = num_heads
@@ -28,7 +32,7 @@ class EGATWrapper(nn.Module):
         )
         self.project = nn.Linear(node_features.shape[1], embedding_dim)
         # Project scalar edge weight (confidence) to embedding_dim
-        
+
         if self.use_bayesian==False:
             self.edge_project = nn.Linear(embedding_dim + 1, embedding_dim)
 
@@ -76,40 +80,77 @@ class EGATWrapper(nn.Module):
             efeats = torch.cat([rel_emb, edge_weight], dim=1)  # [E, embedding_dim+1]
             efeats = self.edge_project(efeats)
 
-
-        # DGL expects graph object
         src, dst = edge_index
-        graph = dgl.graph((src, dst), num_nodes=x.size(0))
-        graph.ndata['h'] = x
-        graph.edata['f'] = efeats
 
         for i, conv in enumerate(self.convs):
-            x, efeats = conv(graph, x, efeats, edge_type=edge_type, edge_weight=edge_weight)
-            x = x.mean(dim=1)
+            # Gradient checkpointing: recompute activations during backward
+            # instead of storing them — avoids OOM on large graphs.
+            # The DGL graph is built inside so it is not retained in memory.
+            _conv = conv
+            _et   = edge_type
+            _ew   = edge_weight
+            _src, _dst = src, dst
+
+            def _run_conv(x, efeats, conv=_conv, et=_et, ew=_ew,
+                          src=_src, dst=_dst):
+                g = dgl.graph((src, dst), num_nodes=x.size(0))
+                g = g.to(x.device)
+                g.ndata['h'] = x
+                g.edata['f'] = efeats
+                return conv(g, x, efeats, edge_type=et, edge_weight=ew)
+
+            if self.training:
+                x, efeats = grad_checkpoint(_run_conv, x, efeats,
+                                            use_reentrant=False)
+            else:
+                x, efeats = _run_conv(x, efeats)
+
+            x      = x.mean(dim=1)
             efeats = efeats.mean(dim=1)
-            if i != len(self.convs)-1:
+            if i != len(self.convs) - 1:
                 x = F.elu(x)
                 x = F.dropout(x, p=self.dropout_ratio, training=self.training)
 
         return x
     
 
-    def distmult(self, embedding, triplets):
+    def _distmult_direct(self, h, r, t):
+        return torch.sum(h * r * t, dim=-1)
 
+    def _complex_direct(self, h, r, t):
+        re_h, im_h = torch.chunk(h, 2, dim=-1)
+        re_r, im_r = torch.chunk(r, 2, dim=-1)
+        re_t, im_t = torch.chunk(t, 2, dim=-1)
+        return torch.sum(
+            re_h * re_t * re_r + im_h * im_t * re_r
+            + re_h * im_t * im_r - im_h * re_t * im_r, dim=-1)
+
+    def distmult(self, embedding, triplets):
         s = embedding[triplets[:, 0]]
         r = self.relation_embedding[triplets[:, 1]]
         o = embedding[triplets[:, 2]]
-
-        score = torch.sum(s * r * o, dim=1)
-        return score
+        return self._distmult_direct(s, r, o)
 
     def score_loss(self, embedding, triplets, target):
-
-        score = self.distmult(embedding, triplets)
+        s = embedding[triplets[:, 0]]
+        r = self.relation_embedding[triplets[:, 1]]
+        o = embedding[triplets[:, 2]]
+        if self.score_function == "complex":
+            score = self._complex_direct(s, r, o)
+        else:
+            score = self._distmult_direct(s, r, o)
         return F.binary_cross_entropy_with_logits(score, target)
 
-    def reg_loss(self, embedding):
+    def _score_for_eval(self, h_emb, r_idx, t_embs):
+        n   = t_embs.shape[0]
+        r   = self.relation_embedding[r_idx]
+        h   = h_emb.unsqueeze(0).expand(n, -1)
+        r_b = r.unsqueeze(0).expand(n, -1)
+        if self.score_function == "complex":
+            return self._complex_direct(h, r_b, t_embs)
+        return self._distmult_direct(h, r_b, t_embs)
 
+    def reg_loss(self, embedding):
         return torch.mean(embedding.pow(2)) + \
                torch.mean(self.relation_embedding.pow(2))
     

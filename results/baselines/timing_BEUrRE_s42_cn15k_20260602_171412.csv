@@ -1,0 +1,2 @@
+model,dataset,total_train_time_s,total_train_time_h,status
+BEUrRE_s42,cn15k,37885.34,10.5237,completed

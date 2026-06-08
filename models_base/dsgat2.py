@@ -13,6 +13,7 @@ from torch import nn
 import torch.nn.functional as F
 import dgl
 from torch.nn import init
+from torch.utils.checkpoint import checkpoint as grad_checkpoint
 
 
 class DSGAT2(nn.Module):

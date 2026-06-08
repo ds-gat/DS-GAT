@@ -1,0 +1,24 @@
+Dataset  Baseline                     DS-GAT MRR     Baseline MRR   Δ MRR                   Test      p-value   Effect r
+------------------------------------------------------------------------------------------------------------------------
+† minimum achievable p for n paired observations (all differences same direction); effectively significant
+ppi5k    BEUrRE                      0.963±0.005      0.045 (n=1)  +0.917         insufficient-n            —          —
+ppi5k    DSGATA1_complex             0.963±0.005      0.921±0.022  +0.042      ttest-paired(n=2)      p=0.146 d=1.43 (large)
+ppi5k    EGAT_complex                0.963±0.005      0.760±0.006  +0.203      ttest-paired(n=5)   p=0.000*** d=19.21 (large)
+ppi5k    GATV2_complex               0.963±0.005      0.706±0.008  +0.257      ttest-paired(n=5)   p=0.000*** d=20.98 (large)
+ppi5k    PASSLEAF                    0.963±0.005      0.682±0.039  +0.280      ttest-paired(n=5)   p=0.000*** d=6.96 (large)
+ppi5k    UPGAT                       0.963±0.005      0.920±0.011  +0.043      ttest-paired(n=3)     p=0.010* d=4.01 (large)
+ppi5k    WSGAT_complex               0.963±0.005      0.341±0.085  +0.621      ttest-paired(n=5)   p=0.000*** d=7.13 (large)
+
+cn15k    BEUrRE                      0.219±0.004      0.136 (n=1)  +0.083         insufficient-n            —          —
+cn15k    EGAT_complex                0.219±0.004      0.088±0.003  +0.130      ttest-paired(n=5)   p=0.000*** d=34.33 (large)
+cn15k    GATV2_complex               0.219±0.004      0.112±0.001  +0.107      ttest-paired(n=5)   p=0.000*** d=31.55 (large)
+cn15k    PASSLEAF                    0.219±0.004      0.165±0.013  +0.054      ttest-paired(n=5)   p=0.001*** d=3.45 (large)
+cn15k    UPGAT                       0.219±0.004      0.146±0.003  +0.073      ttest-paired(n=3)   p=0.001*** d=17.56 (large)
+cn15k    WSGAT_complex               0.219±0.004      0.084±0.002  +0.135      ttest-paired(n=5)   p=0.000*** d=28.55 (large)
+
+nl27k    BEUrRE                      0.663±0.005      0.150 (n=1)  +0.513         insufficient-n            —          —
+nl27k    EGAT_complex                0.663±0.005      0.409±0.009  +0.254      ttest-paired(n=5)   p=0.000*** d=18.79 (large)
+nl27k    GATV2_complex               0.663±0.005      0.449±0.016  +0.214      ttest-paired(n=5)   p=0.000*** d=18.80 (large)
+nl27k    PASSLEAF                    0.663±0.005      0.596±0.002  +0.067      ttest-paired(n=5)   p=0.000*** d=16.83 (large)
+nl27k    UPGAT                       0.663±0.005      0.607±0.011  +0.056      ttest-paired(n=3)    p=0.003** d=7.06 (large)
+nl27k    WSGAT_complex               0.663±0.005      0.391±0.008  +0.272      ttest-paired(n=5)   p=0.000*** d=24.08 (large)

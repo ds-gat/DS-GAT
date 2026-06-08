@@ -1,0 +1,2 @@
+relation,mrr,wmrr,wmr,mr,hits@1,hits@3,hits@5,hits@10,mae,mse
+overall,0.149,0.169,225.4,309.3,0.082,0.172,0.215,0.286,0.073,0.024

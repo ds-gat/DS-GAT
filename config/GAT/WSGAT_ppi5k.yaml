@@ -14,7 +14,7 @@
 
 # ── Model ─────────────────────────────────────────────────────────────────────
 modelname: WSGAT
-score: dismult
+score: complex
 embedding_dim: 400
 numhops: 2
 dropout: 0.35

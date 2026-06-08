@@ -1,0 +1,4 @@
+model,dataset,n,mean_s,std_s,min_s,max_s,mean_h,std_h
+BEUrRE,cn15k,1,37885.34,,37885.34,37885.34,10.5237,
+BEUrRE,nl27k,1,46671.9,,46671.9,46671.9,12.9644,
+BEUrRE,ppi5k,1,31906.12,,31906.12,31906.12,8.8628,
