@@ -1,0 +1,80 @@
+Found 5 checkpoints:
+  output/DSGAT3_complex_ppi5k_s2602t_best_mrr_model.pth
+  output/DSGAT3_complex_ppi5k_s42t_best_mrr_model.pth
+  output/DSGAT3_complex_ppi5k_s4510t_best_mrr_model.pth
+  output/DSGAT3_complex_ppi5k_s6635t_best_mrr_model.pth
+  output/DSGAT3_complex_ppi5k_s9394t_best_mrr_model.pth
+
+Running output/DSGAT3_complex_ppi5k_s2602t_best_mrr_model.pth ...
+  A1 Anderson-Darling (residuals ~ N): NOT Gaussian — A1 weakened
+  A3 t-test E[delta]=0 (prior anchoring): delta mean=0.0001 != 0 — A3 weakened
+  A2 Levene (unequal variances across relations): Variances differ by relation — A2 supported
+  A2 Spearman rho(nu_r, empirical var): rho=0.893 p=0.0068 — nu_r positively tracks variance — A2 supported
+  Core: calibration rho(sigma2_ij, |residual_ij|): rho=0.195 p=0.0000 CV=0.026 — sigma2 tracks actual noise — Core supported
+  A1 shape: skewness and excess kurtosis of residuals: skew=-0.114 kurt=-0.783 — approximately Gaussian shape — A1 plausible
+
+Running output/DSGAT3_complex_ppi5k_s42t_best_mrr_model.pth ...
+  A1 Anderson-Darling (residuals ~ N): NOT Gaussian — A1 weakened
+  A3 t-test E[delta]=0 (prior anchoring): delta mean=0.0003 != 0 — A3 weakened
+  A2 Levene (unequal variances across relations): Variances differ by relation — A2 supported
+  A2 Spearman rho(nu_r, empirical var): rho=0.893 p=0.0068 — nu_r positively tracks variance — A2 supported
+  Core: calibration rho(sigma2_ij, |residual_ij|): rho=-0.021 p=0.0000 CV=0.039 — sigma2 inversely tracks noise (unexpected)
+  A1 shape: skewness and excess kurtosis of residuals: skew=-0.129 kurt=-0.885 — approximately Gaussian shape — A1 plausible
+
+Running output/DSGAT3_complex_ppi5k_s4510t_best_mrr_model.pth ...
+  A1 Anderson-Darling (residuals ~ N): NOT Gaussian — A1 weakened
+  A3 t-test E[delta]=0 (prior anchoring): delta mean=0.0004 != 0 — A3 weakened
+  A2 Levene (unequal variances across relations): Variances differ by relation — A2 supported
+  A2 Spearman rho(nu_r, empirical var): rho=0.893 p=0.0068 — nu_r positively tracks variance — A2 supported
+  Core: calibration rho(sigma2_ij, |residual_ij|): rho=-0.104 p=0.0000 CV=0.157 — sigma2 inversely tracks noise (unexpected)
+  A1 shape: skewness and excess kurtosis of residuals: skew=-0.201 kurt=-0.852 — approximately Gaussian shape — A1 plausible
+
+Running output/DSGAT3_complex_ppi5k_s6635t_best_mrr_model.pth ...
+  A1 Anderson-Darling (residuals ~ N): NOT Gaussian — A1 weakened
+  A3 t-test E[delta]=0 (prior anchoring): delta mean=0.0002 != 0 — A3 weakened
+  A2 Levene (unequal variances across relations): Variances differ by relation — A2 supported
+  A2 Spearman rho(nu_r, empirical var): rho=0.893 p=0.0068 — nu_r positively tracks variance — A2 supported
+  Core: calibration rho(sigma2_ij, |residual_ij|): rho=0.048 p=0.0000 CV=0.019 — sigma2 tracks actual noise — Core supported
+  A1 shape: skewness and excess kurtosis of residuals: skew=0.233 kurt=-0.697 — approximately Gaussian shape — A1 plausible
+
+Running output/DSGAT3_complex_ppi5k_s9394t_best_mrr_model.pth ...
+  A1 Anderson-Darling (residuals ~ N): NOT Gaussian — A1 weakened
+  A3 t-test E[delta]=0 (prior anchoring): delta mean=0.0004 != 0 — A3 weakened
+  A2 Levene (unequal variances across relations): Variances differ by relation — A2 supported
+  A2 Spearman rho(nu_r, empirical var): rho=0.893 p=0.0068 — nu_r positively tracks variance — A2 supported
+  Core: calibration rho(sigma2_ij, |residual_ij|): rho=0.240 p=0.0000 CV=0.031 — sigma2 tracks actual noise — Core supported
+  A1 shape: skewness and excess kurtosis of residuals: skew=0.107 kurt=-0.756 — approximately Gaussian shape — A1 plausible
+
+=================================================================
+RESULTS — ppi5k  layer=0  n=5 seeds
+=================================================================
+
+A1 Anderson-Darling (residuals ~ N)
+  stat  : 5926.5778 ± 1314.0840
+  H0 rejected: 5/5 seeds
+  → NOT Gaussian — A1 weakened
+
+A3 t-test E[delta]=0 (prior anchoring)
+  p-val : 0.0000 ± 0.0000   mean delta: 0.0003 ± 0.0001
+  H0 rejected: 5/5 seeds
+  → delta mean=0.0001 != 0 — A3 weakened
+
+A2 Levene (unequal variances across relations)
+  p-val : 0.0000 ± 0.0000   groups: 7
+  H0 rejected: 5/5 seeds
+  → Variances differ by relation — A2 supported
+
+A2 Spearman rho(nu_r, empirical var)
+  rho   : 0.8929 ± 0.0000   p: 0.0068 ± 0.0000
+  H0 rejected: 5/5 seeds
+  → rho=0.893 p=0.0068 — nu_r positively tracks variance — A2 supported
+
+Core: calibration rho(sigma2_ij, |residual_ij|)
+  rho   : 0.0713 ± 0.1294   p: 0.0000 ± 0.0000   CV: 0.054 ± 0.052
+  H0 rejected: 3/5 seeds
+  → rho=0.195 p=0.0000 CV=0.026 — sigma2 tracks actual noise — Core supported
+
+A1 shape: skewness and excess kurtosis of residuals
+  skew  : -0.0207 ± 0.1633   excess kurt: -0.7947 ± 0.0672
+  H0 rejected: 5/5 seeds
+  → skew=-0.114 kurt=-0.783 — approximately Gaussian shape — A1 plausible

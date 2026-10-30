@@ -1,0 +1,42 @@
+# Ablation A3 — without relational evidence, of DSGAT3 on nl27k (same hyperparameters, seed 42)
+#   python models.py --config config/ablation/DSGAT3NE_nl27k.yaml
+
+# ── Model ─────────────────────────────────────────────────────────────────────
+modelname: DSGAT3NE
+score: complex
+embedding_dim: 500              # larger embedding for nl27k (~27k entities)
+numhops: 2
+dropout: 0.35                   # higher dropout for nl27k
+edge_weight_mode: bayesian
+nll_lambda: 0.2                 # tau_KL, weight of the KL calibration term
+
+beta_lambda: 0.1                # tau_conf, weight of the Beta confidence NLL
+evidence_lr: 0.05               # eta_e, learning rate of the relational-evidence strengths
+
+# ── Dataset ───────────────────────────────────────────────────────────────────
+dataset: nl27k
+weighted: true
+no_directed: false
+
+# ── Training ──────────────────────────────────────────────────────────────────
+n_epochs: 3000
+evaluate_every: 300
+graph_batch_size: -1
+negative_sample: 50
+test_graph_size: -1
+regularization: 0.01
+grad_norm: 1.0
+seed: 42
+
+# ── Optimizer ─────────────────────────────────────────────────────────────────
+lr: 0.001
+lr_decay_factor: 0.5
+lr_patience: 100
+min_lr: 1.0e-5
+
+# ── Early stopping ────────────────────────────────────────────────────────────
+early_stop_patience: 20
+early_stop_delta: 0.001
+
+# ── Hardware ──────────────────────────────────────────────────────────────────
+gpu: 0

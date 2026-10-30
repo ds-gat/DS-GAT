@@ -1,0 +1,2 @@
+model,total_train_time_s,total_train_time_h,status
+DSGAT3-elr0.05_kl0.05_complex_cn15k_s42,18902.74,5.2508,completed

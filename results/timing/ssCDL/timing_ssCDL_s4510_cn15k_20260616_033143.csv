@@ -1,0 +1,2 @@
+model,dataset,total_train_time_s,total_train_time_h,status
+ssCDL_s4510,cn15k,61262.41,17.0173,completed

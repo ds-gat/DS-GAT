@@ -1,0 +1,2 @@
+model,total_train_time_s,total_train_time_h,status
+DSGAT3-elr0.05_complex_ppi5k_s42,31282.94,8.6897,completed

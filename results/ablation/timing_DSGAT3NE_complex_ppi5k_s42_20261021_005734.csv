@@ -1,0 +1,2 @@
+model,total_train_time_s,total_train_time_h,status
+DSGAT3NE_complex_ppi5k_s42,31383.91,8.7178,completed

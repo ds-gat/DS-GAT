@@ -130,7 +130,7 @@ def load_data(file_path):
         test_triplets, test_conf = read_triplets(os.path.join(file_path, 'test.txt'), entity2id, relation2id)
 
     elif os.path.exists(entity_dict_2) and os.path.exists(relation_dict_2):
-        # Ontoomics
+        # Alternative format: id dictionaries + edges_{train,val,test}_new.tsv
 
         import csv
         entity2id = {}
@@ -935,7 +935,12 @@ def calc_mrr(embedding, w, test_triplets, all_triplets, hits=[],
                 # ComplEx / RotatE — vectorised, no dim mismatch
                 h_emb  = embedding[subject]               # [dim]
                 t_embs = embedding[perturb_entity_index]  # [n_cand, dim]
-                score  = score_func(h_emb, relation, t_embs).unsqueeze(0)  # [1, n_cand]
+                if getattr(score_func, 'needs_ids', False):
+                    # models whose score also depends on entity ids (DSGAT3 relational evidence)
+                    score = score_func(h_emb, relation, t_embs,
+                                       subject, perturb_entity_index).unsqueeze(0)
+                else:
+                    score = score_func(h_emb, relation, t_embs).unsqueeze(0)  # [1, n_cand]
             else:
                 # DistMult — original code, unchanged
                 emb_ar = embedding[subject] * w[relation]

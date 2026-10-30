@@ -1,0 +1,2 @@
+model,dataset,total_train_time_s,total_train_time_h,status,segment_time_s,n_segments
+UKGE_s4510,ppi5k,8431.7,2.3421,completed,8431.7,1

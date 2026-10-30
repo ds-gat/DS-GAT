@@ -1,0 +1,2 @@
+model,dataset,total_train_time_s,total_train_time_h,status
+ssCDL_s42,nl27k,122548.66,34.0413,completed

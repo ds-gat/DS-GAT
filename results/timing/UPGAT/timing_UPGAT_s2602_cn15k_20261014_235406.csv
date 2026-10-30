@@ -1,0 +1,2 @@
+model,dataset,total_train_time_s,total_train_time_h,status,segment_time_s,n_segments
+UPGAT_s2602,cn15k,47.31,0.0131,interrupted,11.72,3

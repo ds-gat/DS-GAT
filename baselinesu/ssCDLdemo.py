@@ -3,6 +3,7 @@
 
 import argparse
 import csv
+import inspect
 import os
 import signal
 import time
@@ -54,7 +55,8 @@ def save_metrics_csv(trainer, model_name, dataset_name, output_dir="results/base
     print(f"Metrics saved to: {filepath}")
 
 
-def save_timing_csv(model_name, dataset_name, total_time_s, status="completed", output_dir="results/baselines"):
+def save_timing_csv(model_name, dataset_name, total_time_s, status="completed", output_dir="results/baselines",
+                    segment_time_s=None, n_segments=1):
     os.makedirs(output_dir, exist_ok=True)
     now      = datetime.now().strftime("%Y%m%d_%H%M%S")
     filepath = os.path.join(output_dir, f"timing_{model_name}_{dataset_name}_{now}.csv")
@@ -63,6 +65,7 @@ def save_timing_csv(model_name, dataset_name, total_time_s, status="completed", 
         writer = csv.DictWriter(f, fieldnames=[
             "model", "dataset",
             "total_train_time_s", "total_train_time_h", "status",
+            "segment_time_s", "n_segments",
         ])
         writer.writeheader()
         writer.writerow({
@@ -71,6 +74,8 @@ def save_timing_csv(model_name, dataset_name, total_time_s, status="completed", 
             "total_train_time_s": round(total_time_s, 2),
             "total_train_time_h": round(total_time_s / 3600, 4),
             "status":             status,
+            "segment_time_s":     round(total_time_s if segment_time_s is None else segment_time_s, 2),
+            "n_segments":         n_segments,
         })
 
     print(f"Timing saved to: {filepath}")
@@ -131,9 +136,12 @@ def main(config_path, dataset_name, seed=None):
     resume_ckpt = None
     if os.path.isfile(last_ckpt):
         try:
-            ckpt_state = torch.load(last_ckpt, map_location="cpu").get("state_dict", {})
+            ckpt_full  = torch.load(last_ckpt, map_location="cpu")
+            ckpt_state = ckpt_full.get("state_dict", {})
             ent_w = ckpt_state.get("model.ent_emb.weight")
-            if ent_w is not None and ent_w.shape[1] != args.emb_dim:
+            if "optimizer_states" not in ckpt_full:
+                print("WARNING: last.ckpt is weights-only (cannot resume training state), starting from scratch.")
+            elif ent_w is not None and ent_w.shape[1] != args.emb_dim:
                 print(f"WARNING: checkpoint emb_dim={ent_w.shape[1]} != config emb_dim={args.emb_dim}, ignoring checkpoint.")
             else:
                 resume_ckpt = last_ckpt
@@ -148,10 +156,12 @@ def main(config_path, dataset_name, seed=None):
         save_weights_only=True, save_top_k=1)
 
     # Keep last checkpoint: ssCDL's pseudo-label quality improves progressively
+    # full state (optimizer + epoch) so a job killed at the 2-day limit can
+    # resume from last.ckpt; a weights-only last.ckpt cannot be resumed
     model_checkpoint_last = pl.callbacks.ModelCheckpoint(
         filename="last-{epoch}",
         dirpath=dirpath,
-        save_weights_only=True, save_top_k=1, save_last=True)
+        save_weights_only=False, save_top_k=1, save_last=True)
 
     callbacks = [early_callback, model_checkpoint, model_checkpoint_last]
 
@@ -182,7 +192,14 @@ def main(config_path, dataset_name, seed=None):
     _status = "interrupted"
     try:
         if not args.test_only:
-            trainer.fit(lit_model, datamodule=kgdata, ckpt_path=resume_ckpt)
+            if "ckpt_path" in inspect.signature(trainer.fit).parameters:
+                trainer.fit(lit_model, datamodule=kgdata, ckpt_path=resume_ckpt)
+            else:
+                # Lightning < 1.5: resuming is a Trainer argument
+                if resume_ckpt:
+                    args.resume_from_checkpoint = resume_ckpt
+                    trainer = pl.Trainer.from_argparse_args(args, **trainer_kwargs)
+                trainer.fit(lit_model, datamodule=kgdata)
             # prefer last checkpoint: curriculum distillation improves over time
             path = model_checkpoint_last.last_model_path or model_checkpoint.best_model_path
         else:
@@ -196,8 +213,23 @@ def main(config_path, dataset_name, seed=None):
         save_metrics_csv(trainer, f"{model_name}_s{args.seed}", args.dataset_name)
         _status = "completed"
     finally:
+        # accumulate wall time over resumed segments (stored next to the
+        # checkpoints, so deleting the seed folder also resets it)
+        segment_s = time.time() - train_start
+        elapsed_file = os.path.join(dirpath, "elapsed_s.txt")
+        prev_s, n_seg = 0.0, 0
+        if os.path.isfile(elapsed_file):
+            with open(elapsed_file) as f:
+                prev_s, n_seg = f.read().split()
+            prev_s, n_seg = float(prev_s), int(n_seg)
+        os.makedirs(dirpath, exist_ok=True)
+        with open(elapsed_file, "w") as f:
+            f.write(f"{prev_s + segment_s} {n_seg + 1}")
+        print(f"Segment time {segment_s/3600:.2f} h, cumulative {(prev_s + segment_s)/3600:.2f} h "
+              f"over {n_seg + 1} segment(s)")
         save_timing_csv(f"{model_name}_s{args.seed}", args.dataset_name,
-                        time.time() - train_start, status=_status)
+                        prev_s + segment_s, status=_status,
+                        segment_time_s=segment_s, n_segments=n_seg + 1)
 
 
 # ─────────────────────────────────────────────────────────────────────────────

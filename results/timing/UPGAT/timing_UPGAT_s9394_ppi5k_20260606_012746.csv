@@ -1,0 +1,2 @@
+model,dataset,total_train_time_s,total_train_time_h,status
+UPGAT_s9394,ppi5k,157991.68,43.8866,completed

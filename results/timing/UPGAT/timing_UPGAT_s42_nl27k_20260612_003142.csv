@@ -1,0 +1,2 @@
+model,dataset,total_train_time_s,total_train_time_h,status
+UPGAT_s42,nl27k,88852.23,24.6812,completed

@@ -1,0 +1,2 @@
+model,dataset,total_train_time_s,total_train_time_h,status,segment_time_s,n_segments
+UPGAT_s9394,cn15k,146422.47,40.6729,completed,146422.47,1

@@ -1,0 +1,6 @@
+ppi5k: test=21720  with support=95.5%  reverse with same relation in train=87.5%
+   rule-only MRR overall=0.730  on supported=0.764  on unsupported=0.000
+cn15k: test=19293  with support=31.9%  reverse with same relation in train=13.3%
+   rule-only MRR overall=0.139  on supported=0.436  on unsupported=0.000
+nl27k: test=14034  with support=93.3%  reverse with same relation in train=32.8%
+   rule-only MRR overall=0.824  on supported=0.884  on unsupported=0.000

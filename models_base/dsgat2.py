@@ -8,12 +8,23 @@ Performance fix: stream cache (alpha, lam_w) computed only at eval time,
 avoiding double edge_softmax and GPU->CPU transfer during training.
 """
 
+import os
 import torch
 from torch import nn
 import torch.nn.functional as F
 import dgl
 from torch.nn import init
 from torch.utils.checkpoint import checkpoint as grad_checkpoint
+
+# Prior N(c_ij, sigma_0^2) of the Bayesian edge weight (Definition 3 of the paper).
+# The KL term (confidence_kl_loss) trains the posterior towards this prior.
+# Sensitivity runs can change sigma_0 with DSGAT_PRIOR_SIGMA (default 0.3).
+CONF_PRIOR_SIGMA = float(os.environ.get("DSGAT_PRIOR_SIGMA", "0.3"))
+
+# Eval-time edge-weight estimator: "mean" (default, the posterior mean mu_ij,
+# Proposition 1 of the paper; used for all reported results) or "shrinkage"
+# (prior-centred shrinkage). Set with DSGAT_EVAL_ESTIMATOR; training is unaffected.
+EVAL_ESTIMATOR = os.environ.get("DSGAT_EVAL_ESTIMATOR", "mean").lower()
 
 
 class DSGAT2(nn.Module):
@@ -107,7 +118,7 @@ class DSGAT2(nn.Module):
         return x
 
     def confidence_kl_loss(self, edge_weight: torch.Tensor,
-                           sigma: float = 0.3) -> torch.Tensor:
+                           sigma: float = CONF_PRIOR_SIGMA) -> torch.Tensor:
         if not self._conf_dist_cache:
             raise RuntimeError(
                 "confidence_kl_loss() must be called after forward().")
@@ -304,7 +315,16 @@ class EGATConv28(nn.Module):
                 weight_mean + torch.randn_like(weight_mean) * weight_var.sqrt(),
                 1e-3, 1.0)
         else:
-            eff_w = torch.clamp(weight_mean / (1.0 + weight_var), 1e-3, 1.0)
+            if EVAL_ESTIMATOR == "mean":
+                # Posterior mean of q(w) = N(weight_mean, weight_var): the
+                # estimate that minimises the expected squared error under q
+                # (Proposition 1); the prior is enforced by the KL term in training.
+                eff_w = weight_mean
+            else:
+                # prior-centred shrinkage: N(ew, sigma_0^2) prior, posterior N(mu, var)
+                prior_var = CONF_PRIOR_SIGMA ** 2
+                eff_w = ew + (weight_mean - ew) * prior_var / (prior_var + weight_var)
+            eff_w = torch.clamp(eff_w, 1e-3, 1.0)
         return eff_w, weight_mean, weight_var
 
     def edge_attention(self, edges):

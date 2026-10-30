@@ -1,0 +1,2 @@
+model,total_train_time_s,total_train_time_h,status
+DSGAT3-elr0.01_complex_nl27k_s42,17478.29,4.8551,completed

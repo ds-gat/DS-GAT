@@ -1,0 +1,2 @@
+model,dataset,total_train_time_s,total_train_time_h,status
+ssCDL_s2602,ppi5k,162571.22,45.1587,completed

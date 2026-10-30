@@ -1,0 +1,2 @@
+model,dataset,total_train_time_s,total_train_time_h,status
+UPGAT_s42,cn15k,157008.31,43.6134,interrupted

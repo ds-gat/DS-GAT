@@ -7,15 +7,12 @@ import torch.nn as nn
 from torch.cuda.amp import GradScaler, autocast
 from tqdm import tqdm, trange
 from datetime import datetime
-from models_base.rgcn import RGCN
-from models_base.rgcnw import RGCNW
 from models_base.gatv2 import GATv2Rel
 from models_base.egat import EGATWrapper
 from models_base.wsgat import WSGATWrapper
-from models_base.rgat import RGAT
 from models_base.dsgat2 import DSGAT2
-from models_base.dsgat_a1 import DSGATA1
-from models_base.dsgat_a2 import DSGATA2
+from models_base.dsgat3 import DSGAT3
+from models_base.dsgat3_ablation import DSGAT3A1, DSGAT3A2, DSGAT3NE
 
 
 from utils import (
@@ -130,7 +127,10 @@ def valid(valid_triplets, model, test_graph, all_triplets, use_cuda, weighted=Fa
             full_embedding = model(entity, edge_index, edge_type, edge_norm=edge_norm)
 
         # score_func: None → DistMult unchanged; lambda → ComplEx/RotatE
-        if hasattr(model, '_score_for_eval') and getattr(model, 'score_function', 'dismult') in ('complex', 'rotate'):
+        if hasattr(model, '_score_for_eval_ids'):
+            score_fn = lambda h, r, t, s, c: model._score_for_eval_ids(h, r, t, s, c)
+            score_fn.needs_ids = True
+        elif hasattr(model, '_score_for_eval') and getattr(model, 'score_function', 'dismult') in ('complex', 'rotate'):
             score_fn = lambda h, r, t: model._score_for_eval(h, r, t)
         else:
             score_fn = None
@@ -245,7 +245,10 @@ def test(test_triplets, model, test_graph, all_triplets, use_cuda,
             print(f"  median: {np.median(test_conf):.4f}")
 
 
-        if hasattr(model, '_score_for_eval') and getattr(model, 'score_function', 'dismult') in ('complex', 'rotate'):
+        if hasattr(model, '_score_for_eval_ids'):
+            score_fn = lambda h, r, t, s, c: model._score_for_eval_ids(h, r, t, s, c)
+            score_fn.needs_ids = True
+        elif hasattr(model, '_score_for_eval') and getattr(model, 'score_function', 'dismult') in ('complex', 'rotate'):
             score_fn = lambda h, r, t: model._score_for_eval(h, r, t)
         else:
             score_fn = None
@@ -409,21 +412,14 @@ def main(args):
     # device = torch.device(f'cuda:{args.gpu}' if use_cuda else 'cpu')
     # node_features = node_features.to(device)
 
-    # Initialize your RGCN
     model_name=args.modelname
-    file_tag = f"{model_name}_{args.score}_{args.dataset}_s{args.seed}"
+    # --run-tag keeps sensitivity runs (same seed, other hyperparameters) apart:
+    # e.g. DSGAT3-elr0.01_complex_cn15k_s42, so they never overwrite the final runs
+    file_tag = (f"{model_name}{'-' + args.run_tag if args.run_tag else ''}"
+                f"_{args.score}_{args.dataset}_s{args.seed}")
     model = None
-    if(model_name=="RGCN"):
-        model = RGCN(
-            num_entities=node_features_shape[0],
-            num_relations=num_relations_model,
-            num_bases=args.n_bases,
-            dropout=args.dropout,
-            node_features=node_features,
-            embedding_dim=args.embedding_dim,
-            num_layers=args.numhops
-        )
-    if(model_name=="GATV2"):
+    # ── GAT baselines ────────────────────────────────────────────────────────
+    if model_name == "GATV2":
         model = GATv2Rel(
             num_entities=node_features_shape[0],
             num_relations=num_relations_model,
@@ -433,19 +429,7 @@ def main(args):
             num_layers=args.numhops,
             score_function=args.score
         )
-
-    if(model_name=="RGCNW"):
-        model = RGCNW(
-            num_entities=node_features_shape[0],
-            num_relations=num_relations_model,
-            num_bases=args.n_bases,
-            dropout=args.dropout,
-            node_features=node_features,
-            embedding_dim=args.embedding_dim,
-            num_layers=args.numhops,
-            edge_weight_mode=args.edge_weight_mode
-        )
-    if(model_name=="EGAT"):
+    if model_name == "EGAT":
         model = EGATWrapper(
             node_features=node_features,
             num_relations=num_relations_model,
@@ -454,7 +438,7 @@ def main(args):
             num_layers=args.numhops,
             score_function=args.score
         )
-    if(model_name=="WSGAT"):
+    if model_name == "WSGAT":
         model = WSGATWrapper(
             node_features=node_features,
             embedding_dim=args.embedding_dim,
@@ -463,41 +447,29 @@ def main(args):
             num_layers=args.numhops,
             score_function=args.score
         )
-    if(model_name=="RGAT"):
-        model = RGAT(
-            num_entities=node_features_shape[0],
-            num_relations=num_relations_model,
-            num_bases=args.n_bases,
-            dropout=args.dropout,
-            node_features=node_features,
-            embedding_dim=args.embedding_dim,
-            num_layers=args.numhops
-        )
-    if(model_name=="GATV2W"):
-        model = GATv2Rel(
-            num_entities=node_features_shape[0],
-            num_relations=num_relations_model,
-            dropout=args.dropout,
-            node_features=node_features,
-            embedding_dim=args.embedding_dim,
-            num_layers=args.numhops,
-            weights=True
-        )
 
-    if(model_name=="EGATR"):
-        model = EGATWrapper(
-            node_features=node_features,
-            num_relations=num_relations_model,
-            embedding_dim=args.embedding_dim,
-            dropout=args.dropout,
-            num_layers=args.numhops,
-            use_bayesian=True
+    # ── DS-GAT ───────────────────────────────────────────────────────────────
+    # DSGAT3: final model (dual-stream encoder + relational evidence + Beta
+    # confidence decoder). DSGAT3A1 / DSGAT3A2 / DSGAT3NE: its ablations A1, A2
+    # and A3 (models_base/dsgat3_ablation.py).
+    _dsgat3_classes = {"DSGAT3": DSGAT3, "DSGAT3A1": DSGAT3A1,
+                       "DSGAT3A2": DSGAT3A2, "DSGAT3NE": DSGAT3NE}
+    if model_name in _dsgat3_classes:
+        model = _dsgat3_classes[model_name](
+                node_features=node_features,
+                num_relations=num_relations_model,
+                embedding_dim=args.embedding_dim,
+                dropout=args.dropout,
+                num_layers=args.numhops,
+                score_function=args.score,
+                beta_lambda=args.beta_lambda
+            )
+        model.nll_lambda = args.nll_lambda
+        model.set_support_graph(train_triplets, train_conf,
+                                num_entities=node_features_shape[0])
 
-        )
-
-
-   
-    if(model_name=="DSGAT2"):
+    # DSGAT2: dual-stream encoder only (no relational evidence, no decoder)
+    if model_name == "DSGAT2":
         model = DSGAT2(
                 node_features=node_features,
                 num_relations=num_relations_model,
@@ -507,26 +479,10 @@ def main(args):
                 score_function=args.score
             )
         model.nll_lambda = args.nll_lambda
-   
-    _ablation_classes = {
-        "DSGATA1": DSGATA1, "DSGATA2": DSGATA2, 
-    }
-    if model_name in _ablation_classes:
-        model = _ablation_classes[model_name](
-                node_features=node_features,
-                num_relations=num_relations_model,
-                embedding_dim=args.embedding_dim,
-                dropout=args.dropout,
-                num_layers=args.numhops,
-                score_function=args.score
-            )
-        model.nll_lambda = args.nll_lambda
-    
 
     if model is None:
         raise ValueError(f"Unknown modelname '{model_name}'. "
-                         f"Choices: RGCN, GATV2, RGCNW, EGAT, WSGAT, RGAT, GATV2W, EGATR, "
-                         f"DSGAT2, DSGATA1, DSGATA2")
+                         f"Choices: GATV2, EGAT, WSGAT, DSGAT2, DSGAT3, DSGAT3A1, DSGAT3A2, DSGAT3NE")
 
     print(f"train_conf is None: {train_conf is None}")
     if train_conf is not None:
@@ -561,7 +517,16 @@ def main(args):
     valid_triplets = torch.LongTensor(valid_triplets)
     test_conf_tensor = torch.FloatTensor(test_conf) if test_conf is not None else None
     test_triplets = torch.LongTensor(test_triplets)
-    optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
+    if model_name in _dsgat3_classes:
+        # The evidence strengths Gamma (support_w) start small (softplus(-3) ~ 0.05),
+        # where their gradient is tiny; they get their own learning rate eta_e.
+        evid = [p for n, p in model.named_parameters() if n == "support_w"]
+        rest = [p for n, p in model.named_parameters() if n != "support_w"]
+        optimizer = torch.optim.Adam([{"params": rest, "lr": args.lr},
+                                      {"params": evid, "lr": args.evidence_lr}])
+        print(f"[{model_name}] lr {args.lr} for {len(rest)} tensors, evidence lr {args.evidence_lr} for support_w")
+    else:
+        optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
         optimizer, mode='min', factor=args.lr_decay_factor,
         patience=args.lr_patience, min_lr=args.min_lr, verbose=True)
@@ -573,12 +538,31 @@ def main(args):
     if use_cuda:
         model.cuda()
 
+    if args.eval_only:
+        checkpoint_path = args.checkpoint_path or f"./output/{file_tag}t_best_mrr_model.pth"
+        if not os.path.exists(checkpoint_path):
+            raise FileNotFoundError(
+                f"--eval-only requires a checkpoint, none found at {checkpoint_path}. "
+                f"Pass --checkpoint-path, or check --seed matches the checkpoint's seed "
+                f"(file_tag includes it).")
+        print(f"[eval-only] loading {checkpoint_path}")
+        checkpoint = torch.load(checkpoint_path)
+        model.load_state_dict(checkpoint['state_dict'])
+        model.eval()
+        if use_cuda:
+            model.cuda()
+        id2relation = {v: k for k, v in relation2id.items()}
+        test(test_triplets, model, test_graph, all_triplets, use_cuda, weighted=weigthed,
+             relation_map=id2relation, model_name=file_tag,
+             test_conf=test_conf_tensor)
+        return
+
     training_log = []
     train_start_total = time.time()
     _timing_status = "interrupted"
     es_counter = 0   # early-stopping: eval intervals with no MRR improvement > min_delta
 
-    # AMP: mixed precision activo solo en GPU (en CPU es no-op)
+    # Mixed precision only on GPU (no-op on CPU)
     use_amp = use_cuda
     scaler  = GradScaler(enabled=use_amp)
 
@@ -607,7 +591,7 @@ def main(args):
             exit()
 
         scaler.scale(loss).backward()
-        scaler.unscale_(optimizer)                              # necesario antes del clip
+        scaler.unscale_(optimizer)                              # required before clipping
         torch.nn.utils.clip_grad_norm_(model.parameters(), args.grad_norm)
         scaler.step(optimizer)
         scaler.update()
@@ -700,6 +684,15 @@ if __name__ == '__main__':
                         help="Path to a YAML config file. Values are used as defaults "
                              "and can be overridden by any CLI argument.")
 
+    parser.add_argument("--eval-only", action="store_true", default=False,
+                        help="Skip training entirely: load a checkpoint and run test() "
+                             "directly. --seed must match the checkpoint's seed "
+                             "(the checkpoint name includes it).")
+    parser.add_argument("--checkpoint-path", type=str, default=None,
+                        help="Checkpoint to load with --eval-only. Defaults to the same "
+                             "path training would have produced: "
+                             "./output/{modelname}_{score}_{dataset}_s{seed}t_best_mrr_model.pth")
+
     parser.add_argument("--graph-batch-size", type=int, default=30000)
     parser.add_argument("--graph-split-size", type=float, default=0.5)
     parser.add_argument("--negative-sample", type=int, default=1)
@@ -720,10 +713,10 @@ if __name__ == '__main__':
                              "improvement before stopping. Default 20 × 500 = 10k epochs.")
     parser.add_argument("--early-stop-delta", type=float, default=0.001,
                         help="Minimum MRR improvement to count as progress.")
-    parser.add_argument("--n-bases", type=int, default=4)
 
     parser.add_argument("--regularization", type=float, default=1e-2)
-    parser.add_argument("--nll-lambda", type=float, default=0.1)
+    parser.add_argument("--nll-lambda", type=float, default=0.1,
+                        help="Weight tau_KL of the KL calibration term.")
     parser.add_argument("--grad-norm", type=float, default=1.0)
     parser.add_argument("--test-graph-size", type=int, default=-1,
                         help="Maximum number of training triplets to use for test graph (to avoid OOM). Set to -1 to use all triplets (default for CN15k).")
@@ -733,14 +726,21 @@ if __name__ == '__main__':
                         choices=["normalize", "concat", "none", "learnable", "bayesian"],
                         help="Edge weight usage mode: 'normalize' for normalized weights, 'concat' to concatenate edge weights to features, 'none' for raw unnormalized multipliers, 'learnable' for MLP-transformed weights, 'bayesian' for uncertainty-aware Bayesian edge weights (default).")
 
-    parser.add_argument("--modelname", type=str, default="RGCN",
-                        choices=["RGCN", "GATV2","RGCNW", "EGAT", "WSGAT", "RGAT","GATV2W", "EGATR" ,
-                       "DSGAT2", "DSGATA1", "DSGATA2"])
+    parser.add_argument("--modelname", type=str, default="DSGAT3",
+                        choices=["GATV2", "EGAT", "WSGAT",
+                                 "DSGAT2", "DSGAT3", "DSGAT3A1", "DSGAT3A2", "DSGAT3NE"])
+    parser.add_argument("--run-tag", type=str, default="",
+                        help="Suffix added to the model name in all output files and the "
+                             "checkpoint (sensitivity runs). Empty = normal names.")
+    parser.add_argument("--evidence-lr", type=float, default=0.05,
+                        help="Learning rate eta_e of the relational-evidence strengths (DSGAT3*).")
+    parser.add_argument("--beta-lambda", type=float, default=0.1,
+                        help="Weight tau_conf of the Beta confidence NLL (DSGAT3*).")
     
     parser.add_argument("--sampling", type=str, default="uniform",
                         choices=["uniform", "neighbors"])
 
-    parser.add_argument("--score", type=str, default="dismult",
+    parser.add_argument("--score", type=str, default="complex",
                         choices=["dismult", "complex","rotate", "transe", "hybrid"])
 
     parser.add_argument("--weighted", action="store_true")
@@ -749,8 +749,8 @@ if __name__ == '__main__':
                              "By default directed graph + filtered negatives are used.")
     parser.add_argument("--embedding_dim", type=int, default=100)
     parser.add_argument("--numhops", type=int, default=2)
-    parser.add_argument("--dataset", type=str, default="ontoomics",
-                        help="Dataset folder name under data/ (default: ontoomics)")
+    parser.add_argument("--dataset", type=str, default="cn15k",
+                        help="Dataset folder name under data/ (cn15k, nl27k or ppi5k)")
     parser.add_argument("--seed", type=int, default=42,
                         help="Random seed for reproducibility")
 

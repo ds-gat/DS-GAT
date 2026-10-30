@@ -9,6 +9,10 @@ torch>=2.0.0
 #   pip install torch-geometric
 torch-geometric>=2.4.0
 
+# DGL — required by the DS-GAT and EGAT layers (models_base/)
+#   pip install dgl -f https://data.dgl.ai/wheels/cu118/repo.html
+dgl
+
 # torch-scatter — required by utils.py (scatter_add)
 # Must match your torch + CUDA version:
 #   pip install torch-scatter -f https://data.pyg.org/whl/torch-${TORCH_VERSION}+${CUDA}.html

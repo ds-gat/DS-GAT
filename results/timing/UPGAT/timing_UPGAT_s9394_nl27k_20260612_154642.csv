@@ -1,0 +1,2 @@
+model,dataset,total_train_time_s,total_train_time_h,status
+UPGAT_s9394,nl27k,11.13,0.0031,interrupted

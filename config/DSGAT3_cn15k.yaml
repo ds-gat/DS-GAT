@@ -1,0 +1,47 @@
+# DS-GAT (final model, DSGAT3) on cn15k
+# Dual-stream encoder with Bayesian edge weights + ComplEx + relational evidence
+# + Beta confidence decoder. Evaluation uses the posterior mean of the edge
+# weights (DSGAT_EVAL_ESTIMATOR=mean, the default).
+#
+#   python models.py --config config/DSGAT3_cn15k.yaml --seed 42
+# Paper seeds: 42 2602 4510 6635 9394
+
+# ── Model ─────────────────────────────────────────────────────────────────────
+modelname: DSGAT3
+score: complex                  # choices: dismult | complex | rotate | transe | hybrid
+embedding_dim: 400
+numhops: 2
+dropout: 0.2
+edge_weight_mode: bayesian      # choices: normalize | concat | none | learnable | bayesian
+nll_lambda: 0.2                 # tau_KL, weight of the KL calibration term
+
+beta_lambda: 0.1                # tau_conf, weight of the Beta confidence NLL
+evidence_lr: 0.05               # eta_e, learning rate of the relational-evidence strengths
+
+# ── Dataset ───────────────────────────────────────────────────────────────────
+dataset: cn15k
+weighted: true
+no_directed: false
+
+# ── Training ──────────────────────────────────────────────────────────────────
+n_epochs: 3000
+evaluate_every: 300
+graph_batch_size: -1            # -1 = use all training triplets per step
+negative_sample: 50
+test_graph_size: -1             # -1 = use all train triplets for val/test graph
+regularization: 0.01
+grad_norm: 1.0
+seed: 42
+
+# ── Optimizer (Adam + ReduceLROnPlateau) ──────────────────────────────────────
+lr: 0.001
+lr_decay_factor: 0.5
+lr_patience: 100
+min_lr: 1.0e-5
+
+# ── Early stopping ────────────────────────────────────────────────────────────
+early_stop_patience: 20         # eval intervals with no MRR improvement
+early_stop_delta: 0.001
+
+# ── Hardware ──────────────────────────────────────────────────────────────────
+gpu: 0                          # -1 for CPU

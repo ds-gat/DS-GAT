@@ -1,0 +1,42 @@
+# Ablation A1 — neighbourhood-based stream only, of DSGAT3 on ppi5k (same hyperparameters, seed 42)
+#   python models.py --config config/ablation/DSGAT3A1_ppi5k.yaml
+
+# ── Model ─────────────────────────────────────────────────────────────────────
+modelname: DSGAT3A1
+score: complex
+embedding_dim: 400
+numhops: 2                      # default value (not specified in sbatch)
+dropout: 0.4                    # highest dropout for ppi5k
+edge_weight_mode: bayesian
+nll_lambda: 0.2                 # tau_KL, weight of the KL calibration term
+
+beta_lambda: 0.1                # tau_conf, weight of the Beta confidence NLL
+evidence_lr: 0.05               # eta_e, learning rate of the relational-evidence strengths
+
+# ── Dataset ───────────────────────────────────────────────────────────────────
+dataset: ppi5k
+weighted: true
+no_directed: false
+
+# ── Training ──────────────────────────────────────────────────────────────────
+n_epochs: 3000
+evaluate_every: 300
+graph_batch_size: -1
+negative_sample: 50
+test_graph_size: -1
+regularization: 0.01
+grad_norm: 1.0
+seed: 42
+
+# ── Optimizer ─────────────────────────────────────────────────────────────────
+lr: 0.001
+lr_decay_factor: 0.5
+lr_patience: 100
+min_lr: 1.0e-5
+
+# ── Early stopping ────────────────────────────────────────────────────────────
+early_stop_patience: 20
+early_stop_delta: 0.001
+
+# ── Hardware ──────────────────────────────────────────────────────────────────
+gpu: 0
